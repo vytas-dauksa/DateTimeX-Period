@@ -241,12 +241,11 @@ sub get_period_label
 	return $period_labels{$key};
 }
 
-=head2 _get_start_of_the_day($dt)
-
-internal subroutine to get the start of the day. This assumes DST does not
-happen at 12 midday.
-
-=cut
+# _get_start_of_the_day($dt)
+#
+# internal subroutine to get the start of the day. This assumes DST does not
+# happen at 12 midday.
+#
 
 sub _get_start_of_the_day
 {
