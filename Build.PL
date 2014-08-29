@@ -5,7 +5,7 @@ use Module::Build;
 
 my $builder = Module::Build->new(
     module_name         => 'DateTimeX::Period',
-    license             => 'perl',
+    license             => 'artistic_2',
     dist_author         => q{Vytas Dauksa <vytas.dauksa@smoothwall.net>},
     dist_version_from   => 'lib/DateTimeX/Period.pm',
     release_status      => 'stable',

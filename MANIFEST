@@ -2,4 +2,5 @@ Build.PL
 Changes
 lib/DateTimeX/Period.pm
 MANIFEST			This list of files
+LICENSE
 t/01-DateTime.t
