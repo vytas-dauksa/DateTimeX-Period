@@ -1,97 +1,14 @@
-#!/usr/bin/perl
-# Copyright 2014 Smoothwall Ltd.
+#!/usr/bin/env perl
 
-use strict;
 use warnings;
+use strict;
 
 use Test::More;
-use Test::Exception;
+use DateTimeX::Period qw();
 
-my ( $dt, $keys );
-
-my $minute = 60;
-my $hour   = 60 * 60;
-my $day    = 60 * 60 * 24;
-
-# Following epoch is special in UTC, as it is start of the month, week, day,
-# hour and 10 minutes
-my $start = 1409529600; # Monday 01/09/2014 00:00:00
-
-sub test_start
-{
-	my ( $epoch, $period, $comment ) = @_;
-	my $dt = DateTimeX::Period->from_epoch( epoch => $epoch);
-
-	is( $dt->get_start($period)->epoch(), $start, $comment );
-}
-
-sub test_end
-{
-	my ( $expectation, $period, $comment ) = @_;
-	my $dt = DateTimeX::Period->from_epoch( epoch => $start);
-
-	is( $dt->get_end($period)->epoch(), $expectation, $comment );
-}
-
-use_ok('DateTimeX::Period');
-
-# Test that DateTime returns something
-lives_ok { DateTimeX::Period->from_epoch( epoch => $start )}
-	'Lives ok on good parameter';
-
-# add random number of seconds and try to get the start of the period
-test_start($start +  9 * $minute, '10 minutes', 'Get the start of 10 minutes');
-test_start($start + 59 * $minute, 'hour',       'Get the start of hour');
-test_start($start + 23 * $hour,   'day',        'Get the start of day');
-test_start($start +  6 * $day,    'week',       'Get the start of week');
-test_start($start + 29 * $day,    'month',      'Get the start of month');
-
-# Try to get the start of the interval, when it matches the start
-test_start($start,                '10 minutes', '10 minutes boundary test');
-test_start($start,                'hour',       'hour boundary test');
-test_start($start,                'day',        'day boundary test');
-test_start($start,                'week',       'week boundary test');
-test_start($start,                'month',      'month boundary test');
-
-test_end($start + 10 * $minute, '10 minutes', 'Get the end of 10 minutes');
-test_end($start +  1 * $hour,   'hour',       'Get the end of hour');
-test_end($start +  1 * $day,    'day',        'Get the end of day');
-test_end($start +  7 * $day,    'week',       'Get the end of week');
-test_end($start + 30 * $day,    'month',      'Get the end of month');
-
-# Test that library works in year > 2038
-my $friday = 4126032000; # Friday 01/10/2100 00:00:00
-
-lives_ok {
-	$dt = DateTimeX::Period->from_epoch( epoch => $friday + 8 * $day )
-} 'Lives ok on year > 2038';
-
-# Checking that start of October for year 2100 is Friday 01/10/2100 00:00:00
-is(
-	$dt->get_start('month')->epoch(),
-	$friday,
-	'Checking that module works correctly in year 2100'
-);
-
-# Test week boundary, which crosses month boundary, i.e. end of the week is
-# after the 1st of month, but start of the week is before the 1st.
-$dt = DateTimeX::Period->new(
-	year => 2014,
-	month => 2,
-	day   => 2,
-);
-
-is (
-	$dt->get_start('week')->ymd(),
-	'2014-01-27',
-	'can get start of the week that passes month boundary during the week.'
-);
-
-is (
-	$dt->get_end('week')->ymd(),
-	'2014-02-03',
-	'can get end of the week that passes month boundary during the week.'
-);
+my $minute = 60; # in seconds
+my $hour   = $minute * 60;
+my $dt;
 
 # DateTime default time zone is UTC, which does not have daylight saving,
 # hence testing in America/Chicago time zone.
@@ -280,24 +197,5 @@ is(
 	$dt->epoch() + 20 * $minute,
 	'Check that library returns correct epoch, i.e. earlier epoch in this case'
 );
-
-dies_ok {
-	$dt->get_start('doesnotexist')
-} 'get_start() dies on unknown period';
-
-dies_ok {
-	$dt->get_end('doesnotexist')
-} 'get_end() dies on unknown period';
-
-lives_ok {
-	$keys = $dt->get_period_keys()
-} 'Can get ordered list of keys';
-
-ok( !grep(!defined $dt->get_period_label($_), @{$keys} ),
-	'all defined keys has value corresponding');
-
-dies_ok {
-	$dt->get_period_label('doesnotexist')
-} 'get_period_label() dies on undefined key';
 
 done_testing();
