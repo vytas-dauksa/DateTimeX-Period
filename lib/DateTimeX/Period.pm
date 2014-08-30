@@ -15,20 +15,22 @@ in all timezones.
 
 =head1 VERSION
 
-This document describes DateTimeX::Period version 0.01
+This document describes DateTimeX::Period version 0.02
 
 =cut
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 =head1 SYNOPSIS
 
+	# Optionally get local timezone
 	use DateTime::TimeZone qw();
+	my $timezone = DateTime::TimeZone->new( name => 'local' )->name();
+
 	use DateTimeX::Period qw();
 
-	my $dt = DateTimeX::Period->from_epoch(
-		epoch => time(),
-		time_zone => DateTime::TimeZone->new( name => 'local' )->name()
+	my $dt = DateTimeX::Period->now(
+		time_zone => $timezone,
 	);
 	my $interval_start = $dt->get_start('month');
 	my $interval_end   = $dt->get_end('month');
@@ -56,7 +58,7 @@ truncate() available in DateTime, however this would throw an error:
  );
  $dt->truncate(to => 'month'); # Runtime error
 
-Q: You might have guessed, what did I do wrong? 
+Q: You might have guessed, what did I do wrong?
  A: Well time between 00:00 - 00:59 01/04/2011 in 'Asia/Amman' did not exist.
  There are cases when you can't truncate to weeks, days or even hours!
  ( see unit tests ).
@@ -75,7 +77,7 @@ today is 13/03/2010 00:05, and your app for whatever reason adds a day:
  $dt->add(days => 1); # Runtime error!
 
 Q: What's wrong now?
- A: 14/03/2010 00:05 in 'America/Goose_Bay' did not exist! 
+ A: 14/03/2010 00:05 in 'America/Goose_Bay' did not exist!
 
 3. Assume you are running critical application that needs to get epoch!
 Conveniently DateTime has epoch() and for whatever reasons you need to perform
@@ -116,14 +118,14 @@ Q: Why epoch() returns different epoch time when local time doesn't change?
 
 
 All in all, this is convenient and safe module to play with when you can't use
-UTC timezone. It is great solution for such case as following:
+UTC time. It is great solution for such case as following:
 $user cannot use more than $threshold of something within a day in his local
 time or within your operating timezone. Hence query database using its APIs to
 get $user's $threshold so far and react upon:
  pretended_api_call_GET_DATA(
  	from => $dt->get_start('day')->epoch(),
  	to   => $dt->get_end('day')->epoch(),
- ); 
+ );
 
 =cut
 
@@ -170,7 +172,7 @@ sub get_start
 		# Perl DateTime library always returns later date, when date occurs
 		# twice despite it has ability not to do that. Following while loop
 		# checks that start of the 10 minutes period would not be later then
-		# orifinal object.
+		# original object.
 		while ( $dt->epoch > $self->epoch )
 		{
 			$dt->subtract( minutes => 10 );
