@@ -203,28 +203,21 @@ sub get_start
 		try {
 			$dt->truncate( to => 'day' );
 		} catch {
-			$dt = _get_start_of_the_day($dt);
+			$dt->_get_safe_start('day');
 		};
 		return $dt;
 	} elsif ( $period eq 'week') {
 		try {
 			$dt->truncate( to => 'week' );
 		} catch {
-			my $day_of_week = $dt->day_of_week;
-
-			# set to monday, so that we would be on the right day
-			if ( $day_of_week > 1 ) {
-				$dt->set_hour(12)->subtract( days => $day_of_week - 1 );
-			}
-			$dt = _get_start_of_the_day($dt);
+			$dt->_get_safe_start('week');
 		};
 		return $dt;
 	} elsif ( $period eq 'month') {
 		try {
 			$dt->truncate( to => 'month' );
 		} catch {
-			$dt->set_hour(12)->set_day(1);
-			$dt = _get_start_of_the_day($dt);
+			$dt->_get_safe_start('month');
 		};
 		return $dt;
 	} else {
@@ -272,8 +265,7 @@ sub get_end
 				$dt->truncate( to => 'day' );
 			}
 		} catch {
-			$dt->set_hour(12)->add( days => 1 );
-			$dt = _get_start_of_the_day($dt);
+			$dt->_get_safe_end('day');
 		};
 		return $dt;
 	} elsif ( $period eq 'week') {
@@ -284,8 +276,7 @@ sub get_end
 				$dt->truncate( to => 'week' );
 			}
 		} catch {
-			$dt->set_hour(12)->add( weeks => 1 );
-			$dt = _get_start_of_the_day($dt);
+			$dt->_get_safe_end('week');
 		};
 		return $dt;
 	} elsif ( $period eq 'month') {
@@ -296,8 +287,7 @@ sub get_end
 				$dt->truncate( to => 'month' );
 			}
 		} catch {
-			$dt->set_hour(12)->add( months => 1 );
-			$dt = _get_start_of_the_day($dt);
+			$dt->_get_safe_end('month');
 		};
 		return $dt;
 	} else {
@@ -332,45 +322,75 @@ sub get_period_label
 	return $period_labels{$key};
 }
 
-# _get_start_of_the_day($dt)
-#
-# internal subroutine to get the start of the day. This assumes DST does not
-# happen at 12 midday.
-#
-
-sub _get_start_of_the_day
+# Very slow, though necessary fallback algorithms
+# Provides method to safely get start of day, week and month
+sub _get_safe_start
 {
-	my ( $dt ) = @_;
+	my ( $dt, $period ) = @_;
 
-	# save the current day
-	my $date = $dt->day();
+	if ( $period eq 'day' ) {
+		my $cur_day = $dt->day();
 
-	# to be on the safe side, set clock to 12:00:00, so we would not need to
-	# deal with minutes or seconds
-	$dt->set_hour(12)->set_minute(0)->set_second(0);
+		while ($cur_day == $dt->day()) {
+			$dt->subtract( minutes => 5 );
+		}
+	} elsif ( $period eq 'week' ) {
+		my $cur_week = $dt->week();
 
-	# it should be safe now to get the previous day.
-	my $newdate = $dt->clone()->subtract(days => 1)->day();
+		while ($cur_week == $dt->week()) {
+			$dt->subtract( minutes => 5 );
+		}
+	} elsif ( $period eq 'month' ) {
+		my $cur_month = $dt->month();
 
-	# keep subtracting by 1 hour, until you reach previous day
-	while ( $date != $newdate )
-	{
-		$dt->subtract( hours => 1 );
-		$date = $dt->day();
+		while ($cur_month == $dt->month()) {
+			$dt->subtract( minutes => 5 );
+		}
+	} else {
+		croak "found unknown period '$period'";
 	}
-	# now add 1 hour back, so we know we are in correct day
-	$dt->add( hours => 1 );
 
-	return $dt;
+	$dt->add(minutes => 5);
+	return $dt->get_start('10 minutes');
+}
+
+# Provides safe methods to get end of the hour, day, week and month
+sub _get_safe_end
+{
+	my ( $dt, $period ) = @_;
+
+	if ( $period eq 'hour' ) {
+		my $cur_hour = $dt->hour();
+
+		while ( $cur_hour == $dt->hour() ) {
+			$dt->add( minutes => 5 );
+		}
+	} elsif ( $period eq 'day' ) {
+		my $cur_day = $dt->day();
+
+		while ( $cur_day == $dt->day() ) {
+			$dt->add( minutes => 5 );
+		}
+	} elsif ( $period eq 'week' ) {
+		my $cur_week = $dt->week();
+
+		while ( $cur_week == $dt->week() ) {
+			$dt->add( minutes => 5 );
+		}
+	} elsif ( $period eq 'month' ) {
+		my $cur_month = $dt->month();
+
+		while ( $cur_month == $dt->month() ) {
+			$dt->add( minutes => 5 );
+		}
+	} else {
+		croak "found unknown period '$period'";
+	}
+
+	return $dt->get_start('10 minutes');
 }
 
 =head1 CAVEATS
-
-In timezones such as America/Sao_Paulo, Asia/Beirut, Asia/Damascus etc. etc.
-DST happens at midnight. For these occassions, library falls back to another
-algorithm for calculating start/end of interval. On these occasions assumption
-is made that in those timezones DST will never happen at 12am and again at 12pm
-( see _get_start_of_the_day subroutine ).
 
 Start of the week is always Monday.
 

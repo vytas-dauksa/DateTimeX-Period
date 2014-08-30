@@ -16,12 +16,14 @@ my $dt = DateTimeX::Period->from_epoch(
 	time_zone => 'Pacific/Apia'
 );
 
-TODO: {
-	local $TODO = "Bug #1 - should not throw runtime error";
+lives_ok{
+	$dt->get_end('day')
+} "Doesn't throw Runtime error if next day does not exist";
 
-	lives_ok{
-		$dt->get_end('day')
-	} "The end of 29/11/2011 is start of 31/11/2011";
-};
+is(
+	$dt->get_end('day')->ymd() . ' ' . $dt->get_end('day')->hms(),
+	'2011-12-31 00:00:00',
+	"29/12/2011 Follows 31/12/2011 in 'Pacific/Apia' timezone"
+);
 
 done_testing();
