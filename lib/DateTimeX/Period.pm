@@ -37,16 +37,20 @@ our $VERSION = '0.02';
 
 =head1 DESCRIPTION
 
-DateTimeX::Period is a subclass of DateTime & provides easy yet safe methods
-to work in period context such as a day for all timezones.
+DateTimeX::Period provides easy yet safe methods to work in period context
+such as a day for all timezones. It is a subclass of DateTime, thus benefits
+from its great caching.
 
 It is recommended practise to work in UTC and switch to specific timezones only
-when needed. IF YOU CAN DO SO, THEN THIS MODULE IS NOT FOR YOU!!!
+when needed. IF YOU CAN WORK IN UTC TIME, THEN THIS MODULE IS NOT FOR YOU!!!
 
-Yet sometimes this is not possible and this module can help you. It works
-around such problems like:
+Yet sometimes this is not possible and this module may help you. It works
+around problems such as Daylight Saving Time ( DST ) that causes DateTime to
+throw runtime errors.
 
-1. Assume you want to get start of the month, it's convenient to use
+=head1 ISSUES THIS MODULE IS TRYING TO SOLVE
+
+1. Assume you want to get start of the month. It's convenient to use
 truncate() available in DateTime, however this would throw an error:
 
  use DateTime;
@@ -58,13 +62,14 @@ truncate() available in DateTime, however this would throw an error:
  );
  $dt->truncate(to => 'month'); # Runtime error
 
-Q: You might have guessed, what did I do wrong?
- A: Well time between 00:00 - 00:59 01/04/2011 in 'Asia/Amman' did not exist.
- There are cases when you can't truncate to weeks, days or even hours!
- ( see unit tests ).
+DateTime module throws runtime error, because time between 00:00 - 00:59
+01/04/2011 in 'Asia/Amman' did not exist. DateTimeX::Period, on the other hand,
+provides get_start method, that returns 01:00 01/04/2011, as that is when month
+started. See unit tests for more example that shows that even truncating to
+hours can be unsafe!
 
-2. Assume your client that lives in 'America/Goose_Bay' is running your app and
-today is 13/03/2010 00:05, and your app for whatever reason adds a day:
+2. Assume for whatever reason you need to add a day in your code.
+Unfortunately, DateTime is unsafe for that:
 
  use DateTime;
  my $dt = DateTime->new(
@@ -76,12 +81,13 @@ today is 13/03/2010 00:05, and your app for whatever reason adds a day:
  );
  $dt->add(days => 1); # Runtime error!
 
-Q: What's wrong now?
- A: 14/03/2010 00:05 in 'America/Goose_Bay' did not exist!
+Again, 00:05 14/03/2010 did not exist in 'America/Goose_Bay', hence the
+runtime error.
 
 3. Assume you are running critical application that needs to get epoch!
-Conveniently DateTime has epoch() and for whatever reasons you need to perform
+Conveniently DateTime has epoch() and for whatever reason you need to perform
 some operations, such as these:
+
  use DateTime;
  my $dt = DateTime->new(
  	year=> 2013,
@@ -97,35 +103,9 @@ some operations, such as these:
  $dt->truncate(to => 'hour'); # 2013-10-27T00:00:00  same
  print $dt->epoch();          # 1382835600           diff!!!
 
-Q: Why epoch() returns different epoch time when local time doesn't change?
- A: It so happens that 00:00 occurred twice! DateTime documentation classify this
- as ambiguous and always returns later date! Whereas get_start('hour') from
- DateTimeX::Period ( i.e. this module ), would have returned correct epoch:
- use DateTimeX::Period;
- my $dt = DateTime::Period->new(
- 	year=> 2013,
- 	month => 10,
- 	day => 26,
- 	hour => 23,
- 	minute => 59,
-	second => 59,
- 	time_zone => 'Atlantic/Azores',
- );
- $dt->add( seconds => 1 );    # 2013-10-27T00:00:00  same
- print $dt->epoch();          # 1382832000           same
- $dt->get_start('hour');      # 2013-10-27T00:00:00  same
- print $dt->epoch();          # 1382832000           same
-
-
-All in all, this is convenient and safe module to play with when you can't use
-UTC time. It is great solution for such case as following:
-$user cannot use more than $threshold of something within a day in his local
-time or within your operating timezone. Hence query database using its APIs to
-get $user's $threshold so far and react upon:
- pretended_api_call_GET_DATA(
- 	from => $dt->get_start('day')->epoch(),
- 	to   => $dt->get_end('day')->epoch(),
- );
+Due to DST, 00:00 occurred twice. DateTime documentation classifies this as
+ambiguous and always returns later time! Whereas get_start('hour') would have
+returned correct epoch.
 
 =cut
 
@@ -240,7 +220,7 @@ The end date/time depends in which context period is provided:
 
 In cases where midnight does not exist, the start of those periods are not at
 midnight, but this should not affect the end of the period, which is the same
-as the start of the next period. if it happens to be not at midnight, which
+as the start of the next period. If it happens to be not at midnight, which
 might happen in case of 'day', 'week' or 'month' try to truncate, if it fails
 gracefully fallback to another algorithm.
 
