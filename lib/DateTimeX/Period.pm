@@ -15,11 +15,11 @@ in all timezones.
 
 =head1 VERSION
 
-This document describes DateTimeX::Period version 0.02
+This document describes DateTimeX::Period version 0.03
 
 =cut
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 =head1 SYNOPSIS
 
